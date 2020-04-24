@@ -39,6 +39,29 @@ impl Layer {
     pub fn len(&self) -> usize {
         self.neurons.len()
     }
+
+    /// Updates every neurons' activation of a layer given an other layer as input
+    ///
+    /// # Examples
+    /// ```
+    /// use ocrust::mlp::Layer;
+    ///
+    /// let mut prev_layer = Layer::new(15, 1);
+    /// for neuron in prev_layer.neurons.iter_mut() {
+    ///     neuron.activation = Some(1.);
+    /// }
+    ///
+    /// let mut layer = Layer::new(10, 15);
+    /// layer.activate(&prev_layer);
+    /// for neuron in layer.neurons {
+    ///     assert!(neuron.activation.is_some(), "{:?}", neuron.activation);
+    /// }
+    /// ```
+    pub fn activate(&mut self, input: &Layer) {
+        for neuron in &mut self.neurons {
+            neuron.activate(input);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -77,5 +100,21 @@ mod tests {
             neurons: vec![Neuron::new(1); 2],
         };
         assert_eq!(layer.len(), 2);
+    }
+
+    #[test]
+    fn activate_valid() {
+        let mut prev_layer = Layer::new(15, 1);
+        for neuron in prev_layer.neurons.iter_mut() {
+            neuron.activation = Some(1.);
+        }
+
+        let mut layer = Layer {
+            neurons: vec![Neuron::new(15); 10],
+        };
+        layer.activate(&prev_layer);
+        for neuron in layer.neurons {
+            assert!(neuron.activation.is_some(), "{:?}", neuron.activation);
+        }
     }
 }
