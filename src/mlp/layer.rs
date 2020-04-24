@@ -67,8 +67,15 @@ mod tests {
     }
 
     #[test]
-    fn len() {
-        let layer = Layer { neurons: vec![] };
-        assert_eq!(layer.len(), 0);
+    fn len_valid() {
+        let layer = Layer {
+            neurons: vec![Neuron::new(1); 15],
+        };
+        assert_eq!(layer.len(), 15);
+
+        let layer = Layer {
+            neurons: vec![Neuron::new(1); 2],
+        };
+        assert_eq!(layer.len(), 2);
     }
 }
