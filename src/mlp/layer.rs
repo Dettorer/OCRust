@@ -42,6 +42,9 @@ impl Layer {
 
     /// Updates every neurons' activation of a layer given an other layer as input
     ///
+    /// # Panics
+    /// Neuron activation will panic if the input layer has inactivated neurons.
+    ///
     /// # Examples
     /// ```
     /// use ocrust::mlp::Layer;
