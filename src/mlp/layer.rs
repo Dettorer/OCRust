@@ -2,7 +2,7 @@ use super::Neuron;
 
 /// A layer in an MLP, contains [`Neuron`](struct.Neuron.html)s
 pub struct Layer {
-    neurons: Vec<Neuron>,
+    pub neurons: Vec<Neuron>,
 }
 
 impl Layer {
