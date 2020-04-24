@@ -7,8 +7,8 @@
 mod layer;
 mod neuron;
 
-pub use layer::Layer;
-pub use neuron::Neuron;
+use layer::Layer;
+use neuron::Neuron;
 
 /// The main structure representing an MLP, contains [`Layer`](struct.Layer.html)s.
 pub struct MLP {
