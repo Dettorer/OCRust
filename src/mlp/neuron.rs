@@ -3,8 +3,8 @@ use super::Layer;
 /// A neuron in an MLP, contains some weights and a bias
 #[derive(Clone, Default)]
 pub struct Neuron {
-    weights: Vec<f64>,
-    bias: f64,
+    pub weights: Vec<f64>,
+    pub bias: f64,
     pub activation: Option<f64>,
 }
 
