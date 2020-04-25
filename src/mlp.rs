@@ -58,9 +58,10 @@ impl MLP {
     /// let network = MLP::from_topology(&[10, 4, 6, 15, 20]);
     /// ```
     pub fn from_topology(topology: &[usize]) -> Self {
-        if topology.len() < 2 {
-            panic!("Trying to create an MLP with an invalid topology");
-        }
+        assert!(
+            topology.len() >= 2,
+            "Trying to create an MLP with an invalid topology"
+        );
 
         let input_size = topology[0];
         let mut layers = vec![];
@@ -73,6 +74,28 @@ impl MLP {
         MLP {
             input_size: topology[0],
             layers: layers,
+        }
+    }
+
+    /// Ask an MLP to classify a given input, updating the activations of it's output layer
+    ///
+    /// # Panics
+    /// Panics if the input is the wrong size
+    ///
+    /// # Examples
+    /// TODO
+    pub fn classify(&mut self, input: &[f64]) {
+        assert_eq!(
+            input.len(),
+            self.input_size,
+            "Trying to classify a wrong-sized input"
+        );
+
+        self.layers[0].activate(input);
+        let mut last_output = self.layers[0].output();
+        for layer in &mut self.layers.iter_mut().skip(1) {
+            layer.activate(&last_output);
+            last_output = layer.output();
         }
     }
 }
@@ -149,5 +172,28 @@ mod tests {
     #[should_panic]
     fn from_topology_empty_layer() {
         MLP::from_topology(&[5, 5, 0, 5, 5]);
+    }
+
+    #[test]
+    fn classify_valid() {
+        let mut network = MLP::new(10, 5);
+        network.classify(&[0.; 10]);
+        for neuron in &network.layers[1].neurons {
+            assert!(neuron.activation.is_some());
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn classify_input_too_short() {
+        let mut network = MLP::new(10, 5);
+        network.classify(&[0.; 4]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn classify_input_too_long() {
+        let mut network = MLP::new(10, 5);
+        network.classify(&[0.; 6]);
     }
 }
