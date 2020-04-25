@@ -34,6 +34,22 @@ impl Layer {
             neuron.activate(input);
         }
     }
+
+    /// Returns a vector containing all the activations of the neurons in a layer
+    ///
+    /// # Panics
+    /// Panics if the layer's neurons were not activated
+    pub fn output(&self) -> Vec<f64> {
+        self.neurons
+            .iter()
+            .map(|neuron| {
+                // extract each input neuron's activation
+                neuron
+                    .activation
+                    .expect("Trying to collect the output of a non-activated layer.")
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -85,5 +101,27 @@ mod tests {
         for neuron in layer.neurons {
             assert!(neuron.activation.is_some(), "{:?}", neuron.activation);
         }
+    }
+
+    #[test]
+    fn output_valid() {
+        let mut input = [1_f64; 15];
+
+        let mut layer = Layer {
+            neurons: vec![Neuron::new(15); 10],
+        };
+        layer.activate(&input);
+        assert_eq!(layer.output().len(), 10);
+    }
+
+    #[test]
+    #[should_panic]
+    fn output_not_activated() {
+        let mut input = [1_f64; 15];
+
+        let mut layer = Layer {
+            neurons: vec![Neuron::new(15); 10],
+        };
+        layer.output();
     }
 }
