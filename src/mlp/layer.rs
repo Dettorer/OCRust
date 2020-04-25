@@ -25,12 +25,11 @@ impl Layer {
         self.neurons.len()
     }
 
-    /// Updates every neurons' activation of a layer given an other layer as input
+    /// Updates every neurons' activation of a layer given a slice of floats as input.
     ///
     /// # Panics
-    /// Neuron activation will panic if the input layer has inactivated neurons.
-    ///
-    pub fn activate(&mut self, input: &Layer) {
+    /// Neuron activation will panic if it doesn't have a weight for each float of the input.
+    pub fn activate(&mut self, input: &[f64]) {
         for neuron in &mut self.neurons {
             neuron.activate(input);
         }
@@ -77,15 +76,12 @@ mod tests {
 
     #[test]
     fn activate_valid() {
-        let mut prev_layer = Layer::new(15, 1);
-        for neuron in prev_layer.neurons.iter_mut() {
-            neuron.activation = Some(1.);
-        }
+        let mut input = [1_f64; 15];
 
         let mut layer = Layer {
             neurons: vec![Neuron::new(15); 10],
         };
-        layer.activate(&prev_layer);
+        layer.activate(&input);
         for neuron in layer.neurons {
             assert!(neuron.activation.is_some(), "{:?}", neuron.activation);
         }

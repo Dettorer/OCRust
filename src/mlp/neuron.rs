@@ -30,30 +30,25 @@ impl Neuron {
         self.weights.len()
     }
 
-    /// Updates a neuron's activation given an input layer
+    /// Updates a neuron's activation given a slice of floats as input.
+    ///
+    /// The slice typically comes from the activations of the neurons of a previous layer, or the
+    /// MLP's own input.
     ///
     /// The computed activation is always between 0 and 1 inclusive.
     ///
     /// # Panics
-    /// Panics if the input layer isn't the same size as the neuron's weights vector, or if a
-    /// neuron in the input layer isn't activated.
-    pub fn activate(&mut self, input: &Layer) {
+    /// Panics if the input slice isn't the same size as the neuron's weights vector.
+    pub fn activate(&mut self, input: &[f64]) {
         if input.len() != self.weights.len() {
             panic!("Trying to activate a neuron with wrong sized input");
         }
 
         self.activation = Some(sigmoid(
             input
-                .neurons
                 .iter()
-                .map(|neuron| {
-                    // extract each input neuron's activation
-                    neuron
-                        .activation
-                        .expect("Trying to activate a neuron with a not fully activated input")
-                })
                 .zip(&self.weights) // combine each input activation with its weight
-                .map(|(activation, weight)| activation * weight)
+                .map(|(signal, weight)| signal * weight)
                 .sum::<f64>()
                 + self.bias,
         ));
@@ -105,19 +100,13 @@ mod tests {
 
     #[test]
     fn activate_valid() {
-        let prev_neuron = Neuron {
-            activation: Some(1.),
-            ..Default::default()
-        };
-        let prev_layer = Layer {
-            neurons: vec![prev_neuron; 15],
-        };
+        let input = [1_f64; 15];
         let mut neuron = Neuron {
             weights: vec![0.; 15], // weight of 0 for each prev_neuron
             bias: 0.,
             activation: None,
         };
-        neuron.activate(&prev_layer);
+        neuron.activate(&input);
         assert!(neuron.activation.is_some());
         assert!(
             0. <= neuron.activation.unwrap() && neuron.activation.unwrap() <= 1.,
@@ -125,19 +114,13 @@ mod tests {
             neuron.activation.unwrap()
         );
 
-        let prev_neuron = Neuron {
-            activation: Some(1.),
-            ..Default::default()
-        };
-        let prev_layer = Layer {
-            neurons: vec![prev_neuron; 15],
-        };
+        let input = [1_f64; 15];
         let mut neuron = Neuron {
             weights: vec![1.; 15], // max weight for each prev_neuron
             bias: 0.,
             activation: None,
         };
-        neuron.activate(&prev_layer);
+        neuron.activate(&input);
         assert!(neuron.activation.is_some());
         assert!(
             0. <= neuron.activation.unwrap() && neuron.activation.unwrap() <= 1.,
@@ -146,29 +129,14 @@ mod tests {
         );
 
         // make a layer with two differently-activated kind of neurons
-        let mut prev_neurons = vec![
-            Neuron {
-                activation: Some(0.2),
-                ..Default::default()
-            };
-            10
-        ];
-        prev_neurons.extend(vec![
-            Neuron {
-                activation: Some(0.6),
-                ..Default::default()
-            };
-            10
-        ]);
-        let prev_layer = Layer {
-            neurons: prev_neurons,
-        };
+        let mut input = vec![0.2_f64; 10];
+        input.extend(vec![0.6_f64; 10]);
         let mut neuron = Neuron {
             weights: vec![0.3; 20],
             bias: 1.,
             activation: None,
         };
-        neuron.activate(&prev_layer);
+        neuron.activate(&input);
         assert!(neuron.activation.is_some());
         assert!(
             0. <= neuron.activation.unwrap() && neuron.activation.unwrap() <= 1.,
@@ -176,37 +144,15 @@ mod tests {
             neuron.activation.unwrap()
         );
 
-        // make a layer with three differently-activated kind of neurons
-        let mut prev_neurons = vec![
-            Neuron {
-                activation: Some(0.),
-                ..Default::default()
-            };
-            10
-        ];
-        prev_neurons.extend(vec![
-            Neuron {
-                activation: Some(1.),
-                ..Default::default()
-            };
-            10
-        ]);
-        prev_neurons.extend(vec![
-            Neuron {
-                activation: Some(0.5),
-                ..Default::default()
-            };
-            10
-        ]);
-        let prev_layer = Layer {
-            neurons: prev_neurons,
-        };
+        let mut input = vec![0_f64; 10];
+        input.extend(vec![1_f64; 10]);
+        input.extend(vec![0.5_f64; 10]);
         let mut neuron = Neuron {
             weights: vec![0.3; 30], // max weight for each prev_neuron
             bias: 0.3,
             activation: None,
         };
-        neuron.activate(&prev_layer);
+        neuron.activate(&input);
         assert!(neuron.activation.is_some());
         assert!(
             0. <= neuron.activation.unwrap() && neuron.activation.unwrap() <= 1.,
@@ -217,52 +163,26 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn activate_previous_layer_not_activated() {
-        let prev_neuron = Neuron {
-            activation: None,
-            ..Default::default()
-        };
-        let prev_layer = Layer {
-            neurons: vec![prev_neuron; 10],
-        };
-        let mut neuron: Neuron = Default::default();
-        neuron.activate(&prev_layer);
-    }
-
-    #[test]
-    #[should_panic]
-    fn activate_previous_layer_too_short() {
-        let prev_neuron = Neuron {
-            activation: Some(1.),
-            ..Default::default()
-        };
-        let prev_layer = Layer {
-            neurons: vec![prev_neuron; 14],
-        };
+    fn activate_input_too_short() {
+        let input = [1_f64; 14];
         let mut neuron = Neuron {
             weights: vec![0.; 15], // weight of 0 for each prev_neuron
             bias: 0.,
             activation: None,
         };
-        neuron.activate(&prev_layer);
+        neuron.activate(&input);
     }
 
     #[test]
     #[should_panic]
-    fn activate_previous_layer_too_long() {
-        let prev_neuron = Neuron {
-            activation: Some(1.),
-            ..Default::default()
-        };
-        let prev_layer = Layer {
-            neurons: vec![prev_neuron; 16],
-        };
+    fn activate_input_too_long() {
+        let input = [1_f64; 16];
         let mut neuron = Neuron {
             weights: vec![0.; 15], // weight of 0 for each prev_neuron
             bias: 0.,
             activation: None,
         };
-        neuron.activate(&prev_layer);
+        neuron.activate(&input);
     }
 
     #[test]
