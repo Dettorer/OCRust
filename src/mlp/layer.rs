@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn activate_valid() {
-        let mut input = [1_f64; 15];
+        let input = [1_f64; 15];
 
         let mut layer = Layer {
             neurons: vec![Neuron::new(15); 10],
@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn output_valid() {
-        let mut input = [1_f64; 15];
+        let input = [1_f64; 15];
 
         let mut layer = Layer {
             neurons: vec![Neuron::new(15); 10],
@@ -117,9 +117,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn output_not_activated() {
-        let mut input = [1_f64; 15];
-
-        let mut layer = Layer {
+        let layer = Layer {
             neurons: vec![Neuron::new(15); 10],
         };
         layer.output();

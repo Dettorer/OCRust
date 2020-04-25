@@ -1,5 +1,3 @@
-use super::Layer;
-
 /// A neuron in an MLP, contains some weights and a bias
 #[derive(Clone, Default)]
 pub struct Neuron {
