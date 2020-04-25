@@ -13,13 +13,6 @@ impl Neuron {
     ///
     /// # Panics
     /// Panics if `input_size == 0`
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mlp;
-    ///
-    /// let neuron = mlp::Neuron::new(15);
-    /// ```
     pub fn new(input_size: usize) -> Neuron {
         if input_size == 0 {
             panic!("Tried to create a new neuron with 0 weights.");
@@ -33,14 +26,6 @@ impl Neuron {
     }
 
     /// Returns the number of weights in a neuron.
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mlp::Neuron;
-    ///
-    /// let n = Neuron::new(30);
-    /// assert_eq!(n.len(), 30);
-    /// ```
     pub fn len(&self) -> usize {
         self.weights.len()
     }
@@ -52,20 +37,6 @@ impl Neuron {
     /// # Panics
     /// Panics if the input layer isn't the same size as the neuron's weights vector, or if a
     /// neuron in the input layer isn't activated.
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mlp::{Neuron, Layer};
-    ///
-    /// let mut prev_layer = Layer::new(15, 1);
-    /// for neuron in prev_layer.neurons.iter_mut() {
-    ///     neuron.activation = Some(1.);
-    /// }
-    ///
-    /// let mut neuron = Neuron::new(15);
-    /// neuron.activate(&prev_layer);
-    /// assert!(0. <= neuron.activation.unwrap() && neuron.activation.unwrap() <= 1.);
-    /// ```
     pub fn activate(&mut self, input: &Layer) {
         if input.len() != self.weights.len() {
             panic!("Trying to activate a neuron with wrong sized input");

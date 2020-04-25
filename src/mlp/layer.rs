@@ -10,13 +10,6 @@ impl Layer {
     ///
     /// # Panics
     /// Panics if `size == 0`. Neuron initialization will also panic if `input_size == 0`.
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mlp;
-    ///
-    /// let layer = mlp::Layer::new(30, 15);
-    /// ```
     pub fn new(size: usize, input_size: usize) -> Layer {
         if size == 0 {
             panic!("Tried to create a new layer with 0 neurons.");
@@ -28,14 +21,6 @@ impl Layer {
     }
 
     /// Returns the number of neurons in a layer.
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mlp::Layer;
-    ///
-    /// let l = Layer::new(3, 10);
-    /// assert_eq!(l.len(), 3);
-    /// ```
     pub fn len(&self) -> usize {
         self.neurons.len()
     }
@@ -45,21 +30,6 @@ impl Layer {
     /// # Panics
     /// Neuron activation will panic if the input layer has inactivated neurons.
     ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mlp::Layer;
-    ///
-    /// let mut prev_layer = Layer::new(15, 1);
-    /// for neuron in prev_layer.neurons.iter_mut() {
-    ///     neuron.activation = Some(1.);
-    /// }
-    ///
-    /// let mut layer = Layer::new(10, 15);
-    /// layer.activate(&prev_layer);
-    /// for neuron in layer.neurons {
-    ///     assert!(neuron.activation.is_some(), "{:?}", neuron.activation);
-    /// }
-    /// ```
     pub fn activate(&mut self, input: &Layer) {
         for neuron in &mut self.neurons {
             neuron.activate(input);
