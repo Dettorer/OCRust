@@ -42,6 +42,39 @@ impl MLP {
             layers: layers,
         }
     }
+
+    /// Returns a new MLP following the given topology
+    ///
+    /// The topology is a slice where the first value is the network's input size, the following
+    /// values are the sizes of remaining layers, the last one being also the output size.
+    ///
+    /// # Panics
+    /// Panics if there is less than two elements in the topology or if an element is below 1.
+    ///
+    /// # Examples
+    /// ```
+    /// use ocrust::mlp::MLP;
+    ///
+    /// let network = MLP::from_topology(&[10, 4, 6, 15, 20]);
+    /// ```
+    pub fn from_topology(topology: &[usize]) -> Self {
+        if topology.len() < 2 {
+            panic!("Trying to create an MLP with an invalid topology");
+        }
+
+        let input_size = topology[0];
+        let mut layers = vec![];
+        let mut previous_size = input_size;
+        for size in topology.iter().skip(1) {
+            layers.push(Layer::new(*size, previous_size));
+            previous_size = *size;
+        }
+
+        MLP {
+            input_size: topology[0],
+            layers: layers,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -86,5 +119,35 @@ mod tests {
     #[should_panic]
     fn new_wrong_output() {
         MLP::new(2, 0);
+    }
+
+    #[test]
+    fn from_topology_valid() {
+        let topology = [10, 4, 6, 15, 20];
+        let network = MLP::from_topology(&topology);
+        assert_eq!(network.input_size, 10);
+
+        assert_eq!(network.layers.len(), topology.len() - 1);
+        let mut last_size = topology[0];
+        let layer_cases = network.layers.iter().zip(topology.iter().skip(1));
+        for (layer, wanted_size) in layer_cases {
+            assert_eq!(layer.neurons.len(), *wanted_size);
+            for neuron in &layer.neurons {
+                assert_eq!(neuron.weights.len(), last_size);
+            }
+            last_size = *wanted_size;
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_topology_too_short() {
+        MLP::from_topology(&[2]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn from_topology_empty_layer() {
+        MLP::from_topology(&[5, 5, 0, 5, 5]);
     }
 }
