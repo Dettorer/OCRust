@@ -75,4 +75,16 @@ mod tests {
         // Output layer
         assert_eq!(network.layers[1].neurons.len(), output_size);
     }
+
+    #[test]
+    #[should_panic]
+    fn new_wrong_input() {
+        MLP::new(0, 2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn new_wrong_output() {
+        MLP::new(2, 0);
+    }
 }
