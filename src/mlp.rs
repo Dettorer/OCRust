@@ -83,7 +83,12 @@ impl MLP {
     /// Panics if the input is the wrong size
     ///
     /// # Examples
-    /// TODO
+    /// ```
+    /// use ocrust::mlp::MLP;
+    ///
+    /// let mut network = MLP::new(10, 5);
+    /// network.classify(&[0.; 10]);
+    /// ```
     pub fn classify(&mut self, input: &[f64]) {
         assert_eq!(
             input.len(),
