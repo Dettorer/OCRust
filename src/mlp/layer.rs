@@ -1,6 +1,8 @@
 use super::Neuron;
+use serde::{Deserialize, Serialize};
 
 /// A layer in an MLP, contains [`Neuron`](struct.Neuron.html)s
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Layer {
     pub neurons: Vec<Neuron>,
 }

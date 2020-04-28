@@ -9,8 +9,14 @@ mod neuron;
 
 use layer::Layer;
 use neuron::Neuron;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::error::Error;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 /// The main structure representing an MLP, contains [`Layer`](struct.Layer.html)s.
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct MLP {
     input_size: usize,
     layers: Vec<Layer>,
@@ -102,6 +108,32 @@ impl MLP {
             layer.activate(&last_output);
             last_output = layer.output();
         }
+    }
+
+    /// Returns a new MLP that was saved with `save_to_file`.
+    ///
+    /// # Panics
+    /// Panics if the file isn't a valid saved MLP
+    pub fn from_file(path: &std::path::Path) -> Result<Self, Box<dyn Error>> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        let mlp = serde_json::from_reader(reader)?;
+
+        Ok(mlp)
+    }
+
+    /// Save a plain text representation of the MLP to a file.
+    ///
+    /// # Panics
+    /// Panics if the given path isn't accessible for writing.
+    pub fn save_to_file(&self, path: &std::path::Path) -> Result<(), Box<dyn Error>> {
+        let file = File::create(path)?;
+        let writer = BufWriter::new(file);
+
+        serde_json::to_writer_pretty(writer, self)?;
+
+        Ok(())
     }
 }
 

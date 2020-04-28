@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// A neuron in an MLP, contains some weights and a bias
-#[derive(Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, PartialEq, Debug)]
 pub struct Neuron {
     pub weights: Vec<f64>,
     pub bias: f64,
