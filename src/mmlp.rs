@@ -32,7 +32,18 @@ impl MLP {
     /// let network = MLP::new(15, 10);
     /// ```
     pub fn new(input_size: usize, output_size: usize) -> Self {
-        todo!();
+        assert!(input_size > 0, "Trying to create an MLP with no input");
+        assert!(output_size > 0, "Trying to create an MLP with no output");
+
+        let hidden_size = (input_size + output_size) / 2;
+
+        MLP {
+            weights: vec![
+                Array2::zeros((input_size, hidden_size)),
+                Array2::zeros((hidden_size, output_size)),
+            ],
+            biases: vec![Array1::zeros(hidden_size), Array1::zeros(output_size)],
+        }
     }
 
     /// Returns a new MLP following the given topology
@@ -51,7 +62,25 @@ impl MLP {
     /// let network = MLP::from_topology(&[10, 4, 6, 15, 20]);
     /// ```
     pub fn from_topology(topology: &[usize]) -> Self {
-        todo!();
+        assert!(
+            topology.len() >= 2,
+            "Trying to create an MLP with less than two layers"
+        );
+        topology
+            .iter()
+            .for_each(|&size| assert!(size > 0, "Trying to create an MLP with an empty layer"));
+
+        MLP {
+            weights: topology
+                .windows(2)
+                .map(|win| Array2::zeros((win[0], win[1])))
+                .collect(),
+            biases: topology
+                .iter()
+                .skip(1)
+                .map(|&size| Array1::zeros(size))
+                .collect(),
+        }
     }
 
     /// Asks an MLP to classify a given input, returns a probability vector.
