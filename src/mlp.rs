@@ -151,7 +151,7 @@ mod tests {
         assert_eq!(network.layers.len(), 2);
         // Hidden layer
         let hidden = &network.layers[0];
-        let hidden_size = hidden.neurons.len();
+        let hidden_size = hidden.len();
         assert!(
             input_size <= hidden_size && hidden_size <= output_size
                 || input_size >= hidden_size && hidden_size >= output_size,
@@ -166,7 +166,7 @@ mod tests {
         }
 
         // Output layer
-        assert_eq!(network.layers[1].neurons.len(), output_size);
+        assert_eq!(network.layers[1].len(), output_size);
     }
 
     #[test]
@@ -191,7 +191,7 @@ mod tests {
         let mut last_size = topology[0];
         let layer_cases = network.layers.iter().zip(topology.iter().skip(1));
         for (layer, wanted_size) in layer_cases {
-            assert_eq!(layer.neurons.len(), *wanted_size);
+            assert_eq!(layer.len(), *wanted_size);
             for neuron in &layer.neurons {
                 assert_eq!(neuron.weights.len(), last_size);
             }
