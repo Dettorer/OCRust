@@ -1,3 +1,4 @@
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// A neuron in an MLP, contains some weights and a bias
@@ -52,6 +53,14 @@ impl Neuron {
                 .sum::<f64>()
                 + self.bias,
         ));
+    }
+
+    /// Give a random value between -1 and 1 to the bias and every weight
+    pub fn randomize(&mut self) {
+        self.bias = rand::thread_rng().gen_range(-1_f64, 1_f64);
+        for i in 0..self.weights.len() {
+            self.weights[i] = rand::thread_rng().gen_range(-1_f64, 1_f64);
+        }
     }
 }
 
@@ -207,5 +216,16 @@ mod tests {
 
         let res = sigmoid(42.);
         assert!(0. <= res && res <= 1., "res = {}", res);
+    }
+
+    #[test]
+    fn randomize_valid() {
+        // just verify it doesn't panic
+        let mut neuron = Neuron {
+            weights: vec![0.; 15],
+            bias: 0.,
+            activation: None,
+        };
+        neuron.randomize();
     }
 }

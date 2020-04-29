@@ -52,6 +52,13 @@ impl Layer {
             })
             .collect()
     }
+
+    /// Randomizes the weights and the bias of every neuron in a layer
+    pub fn randomize(&mut self) {
+        for neuron in &mut self.neurons {
+            neuron.randomize();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -123,5 +130,14 @@ mod tests {
             neurons: vec![Neuron::new(15); 10],
         };
         layer.output();
+    }
+
+    #[test]
+    fn randomize_valid() {
+        // just verify it doesn't panic
+        let mut layer = Layer {
+            neurons: vec![Neuron::new(15); 10],
+        };
+        layer.randomize();
     }
 }

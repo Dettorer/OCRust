@@ -135,6 +135,13 @@ impl MLP {
 
         Ok(())
     }
+
+    /// Randomizes the weights and the bias of every neurons of an MLP.
+    pub fn randomize(&mut self) {
+        for layer in &mut self.layers {
+            layer.randomize();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -232,5 +239,12 @@ mod tests {
     fn classify_input_too_long() {
         let mut network = MLP::new(10, 5);
         network.classify(&[0.; 6]);
+    }
+
+    #[test]
+    fn randomize_valid() {
+        // just verify it doesn't panic
+        let mut network = MLP::new(10, 5);
+        network.randomize();
     }
 }
