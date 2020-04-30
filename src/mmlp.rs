@@ -5,7 +5,7 @@
 //! Perceptrons](https://en.wikipedia.org/wiki/Multilayer_perceptron) which are a kind of
 //! artificial neural network.
 
-use ndarray::{Array1, Array2};
+use ndarray::{arr1, Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
@@ -99,7 +99,13 @@ impl MLP {
     /// let output: Vec<f64> = network.classify(&[0.; 10]);
     /// ```
     pub fn classify(&self, input: &[f64]) -> Vec<f64> {
-        todo!();
+        self.weights
+            .iter()
+            .zip(&self.biases)
+            .fold(arr1(input), |input, (weights, biases)| {
+                (input.dot(weights) + biases).map(sigmoid)
+            })
+            .to_vec()
     }
 
     /// Returns a new MLP that was saved with `save_to_file`.
@@ -122,6 +128,11 @@ impl MLP {
     pub fn randomize(&mut self) {
         todo!();
     }
+}
+
+fn sigmoid(x: &f64) -> f64 {
+    let e = std::f64::consts::E;
+    1.0_f64 / (1_f64 + e.powf(-x))
 }
 
 #[cfg(test)]
