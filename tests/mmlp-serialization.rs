@@ -1,9 +1,9 @@
 extern crate ocrust;
-use ocrust::mlp::MLP;
+use ocrust::mmlp;
 use std::env;
 
 #[test]
-fn serialization() {
+fn mmlp_serialization() {
     // Find a temporary file
     let mut tmp_path = env::temp_dir();
     tmp_path.push(format!(
@@ -17,7 +17,7 @@ fn serialization() {
     );
 
     // Prepare the network to be saved
-    let network = MLP::new(10, 15);
+    let network = ocrust::mlp![10; 15];
 
     // Save to file
     network.save_to_file(&tmp_path).unwrap();
@@ -28,7 +28,7 @@ fn serialization() {
     );
 
     // Recover from file
-    let recovered = MLP::from_file(&tmp_path).unwrap();
+    let recovered = mmlp::MLP::from_file(&tmp_path).unwrap();
     assert_eq!(network, recovered);
 
     // Delete temporary file

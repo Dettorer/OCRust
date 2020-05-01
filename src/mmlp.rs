@@ -6,8 +6,11 @@
 //! artificial neural network.
 
 use ndarray::{arr1, Array1, Array2};
+use ndarray_rand::RandomExt;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
 
 /// The main structure representing an MLP.
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -17,36 +20,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    /// Returns a new MLP given an input size and a number of classes (output size).
-    ///
-    /// The returned MLP contains exactly one hidden layer of size between the input's and the
-    /// output's one.
-    ///
-    /// # Panics
-    /// Panics if either the input size or the output size is below 1.
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mmlp::MLP;
-    ///
-    /// let network = MLP::new(15, 10);
-    /// ```
-    pub fn new(input_size: usize, output_size: usize) -> Self {
-        assert!(input_size > 0, "Trying to create an MLP with no input");
-        assert!(output_size > 0, "Trying to create an MLP with no output");
-
-        let hidden_size = (input_size + output_size) / 2;
-
-        MLP {
-            weights: vec![
-                Array2::zeros((input_size, hidden_size)),
-                Array2::zeros((hidden_size, output_size)),
-            ],
-            biases: vec![Array1::zeros(hidden_size), Array1::zeros(output_size)],
-        }
-    }
-
-    /// Returns a new MLP following the given topology
+    /// Returns a new MLP following the given topology, randomizing the weights if asked.
     ///
     /// The topology is a slice where the first value is the network's input size, the following
     /// values are the number of neurons in each remaining layers, the last one being also the
@@ -54,14 +28,7 @@ impl MLP {
     ///
     /// # Panics
     /// Panics if there is less than two elements in the topology or if an element is below 1.
-    ///
-    /// # Examples
-    /// ```
-    /// use ocrust::mmlp::MLP;
-    ///
-    /// let network = MLP::from_topology(&[10, 4, 6, 15, 20]);
-    /// ```
-    pub fn from_topology(topology: &[usize]) -> Self {
+    pub fn from_topology(topology: &[usize], randomize: bool) -> Self {
         assert!(
             topology.len() >= 2,
             "Trying to create an MLP with less than two layers"
@@ -70,15 +37,29 @@ impl MLP {
             .iter()
             .for_each(|&size| assert!(size > 0, "Trying to create an MLP with an empty layer"));
 
+        let rng = ndarray_rand::rand_distr::Uniform::new(-1_f64, 1_f64);
+
         MLP {
             weights: topology
                 .windows(2)
-                .map(|win| Array2::zeros((win[0], win[1])))
+                .map(|win| {
+                    if randomize {
+                        Array2::random((win[0], win[1]), rng)
+                    } else {
+                        Array2::zeros((win[0], win[1]))
+                    }
+                })
                 .collect(),
             biases: topology
                 .iter()
                 .skip(1)
-                .map(|&size| Array1::zeros(size))
+                .map(|&size| {
+                    if randomize {
+                        Array1::random(size, rng)
+                    } else {
+                        Array1::zeros(size)
+                    }
+                })
                 .collect(),
         }
     }
@@ -95,7 +76,7 @@ impl MLP {
     /// ```
     /// use ocrust::mmlp::MLP;
     ///
-    /// let mut network = MLP::new(10, 5);
+    /// let mut network = ocrust::mlp![10; 5];
     /// let output: Vec<f64> = network.classify(&[0.; 10]);
     /// ```
     pub fn classify(&self, input: &[f64]) -> Vec<f64> {
@@ -113,7 +94,12 @@ impl MLP {
     /// # Panics
     /// Panics if the file isn't a valid saved MLP
     pub fn from_file(path: &std::path::Path) -> Result<Self, Box<dyn Error>> {
-        todo!();
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        let mlp = serde_json::from_reader(reader)?;
+
+        Ok(mlp)
     }
 
     /// Save a plain text representation of the MLP to a file.
@@ -121,13 +107,33 @@ impl MLP {
     /// # Panics
     /// Panics if the given path isn't accessible for writing.
     pub fn save_to_file(&self, path: &std::path::Path) -> Result<(), Box<dyn Error>> {
-        todo!();
-    }
+        let file = File::create(path)?;
+        let writer = BufWriter::new(file);
 
-    /// Randomizes the weights and the bias of every neurons of an MLP.
-    pub fn randomize(&mut self) {
-        todo!();
+        serde_json::to_writer_pretty(writer, self)?;
+
+        Ok(())
     }
+}
+
+#[macro_export]
+macro_rules! mlp {
+    ($input:expr ; $output:expr) => {
+        $crate::mmlp::MLP::from_topology(&[$input, ($input + $output) / 2, $output], false)
+    };
+    ($($layers:expr),+) => {
+        $crate::mmlp::MLP::from_topology(&[$($layers),*], false)
+    };
+}
+
+#[macro_export]
+macro_rules! randomized_mlp {
+    ($input:expr ; $output:expr) => {
+        $crate::mmlp::MLP::from_topology(&[$input, ($input + $output) / 2, $output], true)
+    };
+    ($($layers:expr),+) => {
+        $crate::mmlp::MLP::from_topology(&[$($layers),*], true)
+    };
 }
 
 fn sigmoid(x: &f64) -> f64 {
@@ -140,59 +146,7 @@ mod tests {
     use super::*;
     use itertools::izip;
 
-    #[test]
-    fn new_valid() {
-        let input_size = 15;
-        let output_size = 10;
-        let network = MLP::new(input_size, output_size);
-
-        // check number and shape of layers (should be one hidden and one output)
-        assert_eq!(network.biases.len(), 2);
-        assert_eq!(network.weights.len(), 2);
-        assert_eq!(network.weights[0].ndim(), 2);
-        assert_eq!(network.weights[1].ndim(), 2);
-
-        // check if weights number is compatible with the input
-        assert_eq!(network.weights[0].dim().0, input_size);
-
-        // Hidden layer
-        let hidden = &network.weights[0];
-        let hidden_neurons = hidden.dim().1;
-        assert_eq!(network.biases[0].dim(), hidden_neurons);
-        assert!(
-            input_size <= hidden_neurons && hidden_neurons <= output_size
-                || input_size >= hidden_neurons && hidden_neurons >= output_size,
-            "input - hidden - output: {} - {} - {}",
-            input_size,
-            hidden_neurons,
-            output_size
-        );
-
-        // check if output's weights number is compatible with the hidden layer
-        assert_eq!(network.weights[1].dim().0, hidden_neurons);
-
-        // check if the output layer is compatible with the number of classes required
-        assert_eq!(network.biases[1].dim(), output_size);
-        assert_eq!(network.weights[1].dim().1, output_size);
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_wrong_input() {
-        MLP::new(0, 2);
-    }
-
-    #[test]
-    #[should_panic]
-    fn new_wrong_output() {
-        MLP::new(2, 0);
-    }
-
-    #[test]
-    fn from_topology_valid() {
-        let topology = [10, 4, 6, 15, 20];
-        let network = MLP::from_topology(&topology);
-
+    fn valid_with_topology(network: &MLP, topology: &[usize]) {
         // check number and shape of layers (should be one hidden and one output)
         assert_eq!(network.biases.len(), topology.len() - 1);
         assert_eq!(network.weights.len(), topology.len() - 1);
@@ -200,9 +154,9 @@ mod tests {
             assert_eq!(layer.ndim(), 2);
         }
 
-        // check layer's compatibility with the previous one
+        // check each layer's correctness and compatibility with the previous one
         let mut input_size = topology[0];
-        let layer_cases = izip!(&network.weights, network.biases, topology.iter().skip(1));
+        let layer_cases = izip!(&network.weights, &network.biases, topology.iter().skip(1));
         for (weights, biases, wanted_size) in layer_cases {
             assert_eq!(weights.dim().0, input_size);
             assert_eq!(weights.dim().1, *wanted_size);
@@ -212,15 +166,43 @@ mod tests {
     }
 
     #[test]
+    fn macro_mlp_short_valid() {
+        let input_size = 15;
+        let output_size = 10;
+        let network = mlp![input_size; output_size];
+
+        valid_with_topology(&network, &[15, 12, 10]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn macro_mlp_short_wrong_input() {
+        mlp![0; 2];
+    }
+
+    #[test]
+    #[should_panic]
+    fn macro_mlp_short_wrong_output() {
+        mlp![2; 0];
+    }
+
+    #[test]
+    fn from_topology_valid() {
+        let topology = [10, 4, 6, 15, 20];
+        let network = MLP::from_topology(&topology, false);
+        valid_with_topology(&network, &topology);
+    }
+
+    #[test]
     #[should_panic]
     fn from_topology_too_short() {
-        MLP::from_topology(&[2]);
+        MLP::from_topology(&[2], false);
     }
 
     #[test]
     #[should_panic]
     fn from_topology_empty_layer() {
-        MLP::from_topology(&[5, 5, 0, 5, 5]);
+        MLP::from_topology(&[5, 5, 0, 5, 5], false);
     }
 
     #[test]
@@ -228,7 +210,7 @@ mod tests {
         let input_size = 10;
         let output_size = 5;
 
-        let network = MLP::new(input_size, output_size);
+        let network = mlp![input_size; output_size];
         let output = network.classify(&vec![0.; input_size]);
 
         assert_eq!(output.len(), output_size);
@@ -237,21 +219,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn classify_input_too_short() {
-        let network = MLP::new(10, 5);
+        let network = mlp![10; 5];
         network.classify(&[0.; 4]);
     }
 
     #[test]
     #[should_panic]
     fn classify_input_too_long() {
-        let network = MLP::new(10, 5);
+        let network = mlp![10; 5];
         network.classify(&[0.; 6]);
-    }
-
-    #[test]
-    fn randomize_valid() {
-        // just verify it doesn't panic
-        let mut network = MLP::new(10, 5);
-        network.randomize();
     }
 }

@@ -1,9 +1,9 @@
 #![feature(test)]
 
+extern crate ocrust;
 extern crate test;
 
 use ocrust::mlp;
-use ocrust::mmlp;
 use test::Bencher;
 
 #[bench]
@@ -14,6 +14,11 @@ fn bench_classify_mlp(bencher: &mut Bencher) {
 
 #[bench]
 fn bench_classify_mmlp(bencher: &mut Bencher) {
-    let network = mmlp::MLP::from_topology(&[20, 15, 15, 10]);
+    let network = ocrust::mlp![20, 15, 15, 10];
     bencher.iter(|| network.classify(&[10.; 20]));
+}
+
+#[bench]
+fn bench_randomize_mmlp(bencher: &mut Bencher) {
+    bencher.iter(|| ocrust::randomized_mlp![20, 15, 15, 13, 17, 10]);
 }
