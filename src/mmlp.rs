@@ -20,7 +20,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    fn from_topology(topology: &[usize], randomize: bool) -> Self {
+    fn from_topology<const RANDOMIZE: bool>(topology: &[usize]) -> Self {
         assert!(
             topology.len() >= 2,
             "Trying to create an MLP with less than two layers"
@@ -35,7 +35,7 @@ impl MLP {
             weights: topology
                 .windows(2)
                 .map(|win| {
-                    if randomize {
+                    if RANDOMIZE {
                         Array2::random((win[0], win[1]), rng)
                     } else {
                         Array2::zeros((win[0], win[1]))
@@ -46,7 +46,7 @@ impl MLP {
                 .iter()
                 .skip(1)
                 .map(|&size| {
-                    if randomize {
+                    if RANDOMIZE {
                         Array1::random(size, rng)
                     } else {
                         Array1::zeros(size)
@@ -65,7 +65,7 @@ impl MLP {
     /// # Panics
     /// Panics if there is less than two elements in the topology or if an element is below 1.
     pub fn from_topology_zeros(topology: &[usize]) -> Self {
-        MLP::from_topology(topology, false)
+        MLP::from_topology::<false>(topology)
     }
 
     /// Returns a new MLP following the given topology, with weights initialized with a random
@@ -78,7 +78,7 @@ impl MLP {
     /// # Panics
     /// Panics if there is less than two elements in the topology or if an element is below 1.
     pub fn from_topology_randomized(topology: &[usize]) -> Self {
-        MLP::from_topology(topology, true)
+        unimplemented!();
     }
 
     /// Asks an MLP to classify a given input, returns a probability vector.
