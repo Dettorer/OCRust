@@ -6,7 +6,7 @@
 //! artificial neural network.
 
 use ndarray::{arr1, Array1, Array2};
-use ndarray_rand::RandomExt;
+use ndarray_rand::{rand_distr::Uniform, RandomExt};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
@@ -19,8 +19,33 @@ pub struct MLP {
     biases: Vec<Array1<f64>>,
 }
 
+trait ArrayBuilder {
+    fn array1(dim: usize, rnd: Uniform<f64>) -> Array1<f64>;
+    fn array2(dim1: usize, dim2: usize, rnd: Uniform<f64>) -> Array2<f64>;
+}
+
+enum ZeroBuilder {}
+impl ArrayBuilder for ZeroBuilder {
+    fn array1(dim: usize, _rnd: Uniform<f64>) -> Array1<f64> {
+        Array1::zeros(dim)
+    }
+    fn array2(dim1: usize, dim2: usize, _rnd: Uniform<f64>) -> Array2<f64> {
+        Array2::zeros((dim1, dim2))
+    }
+}
+
+enum RandomBuilder {}
+impl ArrayBuilder for RandomBuilder {
+    fn array1(dim: usize, rnd: Uniform<f64>) -> Array1<f64> {
+        Array1::random(dim, rnd)
+    }
+    fn array2(dim1: usize, dim2: usize, rnd: Uniform<f64>) -> Array2<f64> {
+        Array2::random((dim1, dim2), rnd)
+    }
+}
+
 impl MLP {
-    fn from_topology(topology: &[usize], randomize: bool) -> Self {
+    fn from_topology<Builder: ArrayBuilder>(topology: &[usize]) -> Self {
         assert!(
             topology.len() >= 2,
             "Trying to create an MLP with less than two layers"
@@ -29,29 +54,17 @@ impl MLP {
             .iter()
             .for_each(|&size| assert!(size > 0, "Trying to create an MLP with an empty layer"));
 
-        let rng = ndarray_rand::rand_distr::Uniform::new(-1_f64, 1_f64);
+        let rnd = ndarray_rand::rand_distr::Uniform::new(-1_f64, 1_f64);
 
         MLP {
             weights: topology
                 .windows(2)
-                .map(|win| {
-                    if randomize {
-                        Array2::random((win[0], win[1]), rng)
-                    } else {
-                        Array2::zeros((win[0], win[1]))
-                    }
-                })
+                .map(|win| Builder::array2(win[0], win[1], rnd))
                 .collect(),
             biases: topology
                 .iter()
                 .skip(1)
-                .map(|&size| {
-                    if randomize {
-                        Array1::random(size, rng)
-                    } else {
-                        Array1::zeros(size)
-                    }
-                })
+                .map(|&size| Builder::array1(size, rnd))
                 .collect(),
         }
     }
@@ -65,7 +78,7 @@ impl MLP {
     /// # Panics
     /// Panics if there is less than two elements in the topology or if an element is below 1.
     pub fn from_topology_zeros(topology: &[usize]) -> Self {
-        MLP::from_topology(topology, false)
+        MLP::from_topology::<ZeroBuilder>(topology)
     }
 
     /// Returns a new MLP following the given topology, with weights initialized with a random
@@ -78,7 +91,7 @@ impl MLP {
     /// # Panics
     /// Panics if there is less than two elements in the topology or if an element is below 1.
     pub fn from_topology_randomized(topology: &[usize]) -> Self {
-        MLP::from_topology(topology, true)
+        MLP::from_topology::<RandomBuilder>(topology)
     }
 
     /// Asks an MLP to classify a given input, returns a probability vector.
@@ -206,20 +219,20 @@ mod tests {
     #[test]
     fn from_topology_valid() {
         let topology = [10, 4, 6, 15, 20];
-        let network = MLP::from_topology(&topology, false);
+        let network = MLP::from_topology::<ZeroBuilder>(&topology);
         valid_with_topology(&network, &topology);
     }
 
     #[test]
     #[should_panic]
     fn from_topology_too_short() {
-        MLP::from_topology(&[2], false);
+        MLP::from_topology::<ZeroBuilder>(&[2]);
     }
 
     #[test]
     #[should_panic]
     fn from_topology_empty_layer() {
-        MLP::from_topology(&[5, 5, 0, 5, 5], false);
+        MLP::from_topology::<ZeroBuilder>(&[5, 5, 0, 5, 5]);
     }
 
     #[test]
