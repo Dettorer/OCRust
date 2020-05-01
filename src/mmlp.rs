@@ -20,15 +20,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    /// Returns a new MLP following the given topology, randomizing the weights if asked.
-    ///
-    /// The topology is a slice where the first value is the network's input size, the following
-    /// values are the number of neurons in each remaining layers, the last one being also the
-    /// output size.
-    ///
-    /// # Panics
-    /// Panics if there is less than two elements in the topology or if an element is below 1.
-    pub fn from_topology(topology: &[usize], randomize: bool) -> Self {
+    fn from_topology(topology: &[usize], randomize: bool) -> Self {
         assert!(
             topology.len() >= 2,
             "Trying to create an MLP with less than two layers"
@@ -62,6 +54,31 @@ impl MLP {
                 })
                 .collect(),
         }
+    }
+
+    /// Returns a new MLP following the given topology, with weights initialized with 0.
+    ///
+    /// The topology is a slice where the first value is the network's input size, the following
+    /// values are the number of neurons in each remaining layers, the last one being also the
+    /// output size.
+    ///
+    /// # Panics
+    /// Panics if there is less than two elements in the topology or if an element is below 1.
+    pub fn from_topology_zeros(topology: &[usize]) -> Self {
+        MLP::from_topology(topology, false)
+    }
+
+    /// Returns a new MLP following the given topology, with weights initialized with a random
+    /// value between -1 and 1.
+    ///
+    /// The topology is a slice where the first value is the network's input size, the following
+    /// values are the number of neurons in each remaining layers, the last one being also the
+    /// output size.
+    ///
+    /// # Panics
+    /// Panics if there is less than two elements in the topology or if an element is below 1.
+    pub fn from_topology_randomized(topology: &[usize]) -> Self {
+        MLP::from_topology(topology, true)
     }
 
     /// Asks an MLP to classify a given input, returns a probability vector.
@@ -119,20 +136,20 @@ impl MLP {
 #[macro_export]
 macro_rules! mlp {
     ($input:expr ; $output:expr) => {
-        $crate::mmlp::MLP::from_topology(&[$input, ($input + $output) / 2, $output], false)
+        $crate::mmlp::MLP::from_topology_zeros(&[$input, ($input + $output) / 2, $output])
     };
     ($($layers:expr),+) => {
-        $crate::mmlp::MLP::from_topology(&[$($layers),*], false)
+        $crate::mmlp::MLP::from_topology_zeros(&[$($layers),*])
     };
 }
 
 #[macro_export]
 macro_rules! randomized_mlp {
     ($input:expr ; $output:expr) => {
-        $crate::mmlp::MLP::from_topology(&[$input, ($input + $output) / 2, $output], true)
+        $crate::mmlp::MLP::from_topology_randomized(&[$input, ($input + $output) / 2, $output])
     };
     ($($layers:expr),+) => {
-        $crate::mmlp::MLP::from_topology(&[$($layers),*], true)
+        $crate::mmlp::MLP::from_topology_randomized(&[$($layers),*])
     };
 }
 
