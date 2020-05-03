@@ -19,11 +19,16 @@ pub struct MLP {
     biases: Vec<Array1<f64>>,
 }
 
+/// A common trait for the ability to generate one and two dimensions ndarrays of `f64`.
+///
+/// This is used in this module to help having a common interface for generating either zeroed
+/// arrays or randomized arrays.
 trait ArrayBuilder {
     fn array1(dim: usize, rnd: Uniform<f64>) -> Array1<f64>;
     fn array2(dim1: usize, dim2: usize, rnd: Uniform<f64>) -> Array2<f64>;
 }
 
+/// An `ArrayBuilder` that generates arrays with elements initialized to 0.
 enum ZeroBuilder {}
 impl ArrayBuilder for ZeroBuilder {
     fn array1(dim: usize, _rnd: Uniform<f64>) -> Array1<f64> {
@@ -34,6 +39,7 @@ impl ArrayBuilder for ZeroBuilder {
     }
 }
 
+/// An `ArrayBuilder` that generates arrays with randomized elements.
 enum RandomBuilder {}
 impl ArrayBuilder for RandomBuilder {
     fn array1(dim: usize, rnd: Uniform<f64>) -> Array1<f64> {
@@ -45,6 +51,17 @@ impl ArrayBuilder for RandomBuilder {
 }
 
 impl MLP {
+    /// Returns a new MLP following the given topology, with weights and biases generated with the
+    /// given `ArrayBuilder`.
+    ///
+    /// The topology is a slice where the first value is the network's input size, the following
+    /// values are the number of neurons in each remaining layers, the last one being also the
+    /// output size.
+    ///
+    /// Each weight matrix and bias array is an ndarray generated using the given `ArrayBuilder`.
+    ///
+    /// # Panics
+    /// Panics if there is less than two elements in the topology or if an element is below 1.
     fn from_topology<Builder: ArrayBuilder>(topology: &[usize]) -> Self {
         assert!(
             topology.len() >= 2,
@@ -146,6 +163,36 @@ impl MLP {
     }
 }
 
+/// Creates a zero-initialized [`MLP`] with the given topology.
+///
+/// There are two forms of this macro:
+///
+/// - Create an [`MLP`] with a detailed topology:
+///
+/// ```
+/// use ocrust::mlp;
+///
+/// let mut network = mlp![50, 30, 45, 40, 26];
+/// let output = network.classify(&[0.5; 50]);
+/// assert_eq!(26, output.len());
+/// ```
+///
+/// - Create a [`MLP`] with an input and output size:
+///
+/// ```
+/// use ocrust::mlp;
+///
+/// let input_size = 15;
+/// let output_size = 10;
+/// let mut network = mlp![input_size; output_size];
+/// let output = network.classify(&[0.5; 15]);
+/// assert_eq!(output_size, output.len());
+/// ```
+///
+/// This last variant will create an MLP with exactly one hidden layer which size is between the
+/// input's and the output's.
+///
+/// [`MLP`]: ./mmlp/struct.MLP.html
 #[macro_export]
 macro_rules! mlp {
     ($input:expr ; $output:expr) => {
@@ -156,6 +203,36 @@ macro_rules! mlp {
     };
 }
 
+/// Creates a [`MLP`] with the given topology and randomized weights and biases.
+///
+/// There are two forms of this macro:
+///
+/// - Create an [`MLP`] with a detailed topology:
+///
+/// ```
+/// use ocrust::randomized_mlp;
+///
+/// let mut network = randomized_mlp![50, 30, 45, 40, 26];
+/// let output = network.classify(&[0.5; 50]);
+/// assert_eq!(26, output.len());
+/// ```
+///
+/// - Create a [`MLP`] with an input and output size:
+///
+/// ```
+/// use ocrust::randomized_mlp;
+///
+/// let input_size = 15;
+/// let output_size = 10;
+/// let mut network = randomized_mlp![input_size; output_size];
+/// let output = network.classify(&[0.5; 15]);
+/// assert_eq!(output_size, output.len());
+/// ```
+///
+/// This last variant will create an MLP with exactly one hidden layer which size is between the
+/// input's and the output's.
+///
+/// [`MLP`]: ./mmlp/struct.MLP.html
 #[macro_export]
 macro_rules! randomized_mlp {
     ($input:expr ; $output:expr) => {
@@ -200,8 +277,27 @@ mod tests {
         let input_size = 15;
         let output_size = 10;
         let network = mlp![input_size; output_size];
-
         valid_with_topology(&network, &[15, 12, 10]);
+    }
+
+    #[test]
+    fn macro_mlp_long_valid() {
+        let network = mlp![10, 4, 6, 15, 20];
+        valid_with_topology(&network, &[10, 4, 6, 15, 20]);
+    }
+
+    #[test]
+    fn macro_randomized_short_valid() {
+        let input_size = 15;
+        let output_size = 10;
+        let network = randomized_mlp![input_size; output_size];
+        valid_with_topology(&network, &[15, 12, 10]);
+    }
+
+    #[test]
+    fn macro_randomized_long_valid() {
+        let network = randomized_mlp![10, 4, 6, 15, 20];
+        valid_with_topology(&network, &[10, 4, 6, 15, 20]);
     }
 
     #[test]
