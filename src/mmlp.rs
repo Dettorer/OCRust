@@ -5,18 +5,17 @@
 //! Perceptrons](https://en.wikipedia.org/wiki/Multilayer_perceptron) which are a kind of
 //! artificial neural network.
 
-use ndarray::{arr1, Array1, Array2};
-use ndarray_rand::{rand_distr::Uniform, RandomExt};
+use nalgebra::{DMatrix, DVector};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
 /// The main structure representing an MLP.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct MLP {
-    weights: Vec<Array2<f64>>,
-    biases: Vec<Array1<f64>>,
+    weights: Vec<DMatrix<f64>>,
+    biases: Vec<DVector<f64>>,
 }
 
 /// A common trait for the ability to generate one and two dimensions ndarrays of `f64`.
@@ -24,29 +23,29 @@ pub struct MLP {
 /// This is used in this module to help having a common interface for generating either zeroed
 /// arrays or randomized arrays.
 trait ArrayBuilder {
-    fn array1(dim: usize, rnd: Uniform<f64>) -> Array1<f64>;
-    fn array2(dim1: usize, dim2: usize, rnd: Uniform<f64>) -> Array2<f64>;
+    fn array1(dim: usize) -> DVector<f64>;
+    fn array2(dim1: usize, dim2: usize) -> DMatrix<f64>;
 }
 
 /// An `ArrayBuilder` that generates arrays with elements initialized to 0.
 enum ZeroBuilder {}
 impl ArrayBuilder for ZeroBuilder {
-    fn array1(dim: usize, _rnd: Uniform<f64>) -> Array1<f64> {
-        Array1::zeros(dim)
+    fn array1(dim: usize) -> DVector<f64> {
+        DVector::zeros(dim)
     }
-    fn array2(dim1: usize, dim2: usize, _rnd: Uniform<f64>) -> Array2<f64> {
-        Array2::zeros((dim1, dim2))
+    fn array2(dim1: usize, dim2: usize) -> DMatrix<f64> {
+        DMatrix::zeros(dim1, dim2)
     }
 }
 
 /// An `ArrayBuilder` that generates arrays with randomized elements.
 enum RandomBuilder {}
 impl ArrayBuilder for RandomBuilder {
-    fn array1(dim: usize, rnd: Uniform<f64>) -> Array1<f64> {
-        Array1::random(dim, rnd)
+    fn array1(dim: usize) -> DVector<f64> {
+        DVector::new_random(dim)
     }
-    fn array2(dim1: usize, dim2: usize, rnd: Uniform<f64>) -> Array2<f64> {
-        Array2::random((dim1, dim2), rnd)
+    fn array2(dim1: usize, dim2: usize) -> DMatrix<f64> {
+        DMatrix::new_random(dim1, dim2)
     }
 }
 
@@ -71,17 +70,15 @@ impl MLP {
             .iter()
             .for_each(|&size| assert!(size > 0, "Trying to create an MLP with an empty layer"));
 
-        let rnd = ndarray_rand::rand_distr::Uniform::new(-1_f64, 1_f64);
-
         MLP {
             weights: topology
                 .windows(2)
-                .map(|win| Builder::array2(win[0], win[1], rnd))
+                .map(|win| Builder::array2(win[1], win[0]))
                 .collect(),
             biases: topology
                 .iter()
                 .skip(1)
-                .map(|&size| Builder::array1(size, rnd))
+                .map(|&size| Builder::array1(size))
                 .collect(),
         }
     }
@@ -122,18 +119,18 @@ impl MLP {
     /// # Examples
     /// ```
     /// use ocrust::mmlp::MLP;
+    /// use nalgebra::DVector;
     ///
     /// let mut network = ocrust::mlp![10; 5];
-    /// let output: Vec<f64> = network.classify(&[0.; 10]);
+    /// let input = DVector::from_row_slice(&[0.; 10]);
+    /// let output: DVector<f64> = network.classify(&input);
     /// ```
-    pub fn classify(&self, input: &[f64]) -> Vec<f64> {
-        self.weights
-            .iter()
-            .zip(&self.biases)
-            .fold(arr1(input), |input, (weights, biases)| {
-                (input.dot(weights) + biases).map(sigmoid)
-            })
-            .to_vec()
+    pub fn classify(&self, input: &DVector<f64>) -> DVector<f64> {
+        let mut prev = input.clone_owned();
+        for (weights, biases) in self.weights.iter().zip(&self.biases) {
+            prev = (weights * prev + biases).map(sigmoid)
+        }
+        prev
     }
 
     /// Returns a new MLP that was saved with `save_to_file`.
@@ -171,9 +168,11 @@ impl MLP {
 ///
 /// ```
 /// use ocrust::mlp;
+/// use nalgebra::DVector;
 ///
 /// let mut network = mlp![50, 30, 45, 40, 26];
-/// let output = network.classify(&[0.5; 50]);
+/// let input = DVector::from_row_slice(&[0.5; 50]);
+/// let output = network.classify(&input);
 /// assert_eq!(26, output.len());
 /// ```
 ///
@@ -181,11 +180,13 @@ impl MLP {
 ///
 /// ```
 /// use ocrust::mlp;
+/// use nalgebra::DVector;
 ///
 /// let input_size = 15;
 /// let output_size = 10;
 /// let mut network = mlp![input_size; output_size];
-/// let output = network.classify(&[0.5; 15]);
+/// let input = DVector::from_row_slice(&[0.5; 15]);
+/// let output = network.classify(&input);
 /// assert_eq!(output_size, output.len());
 /// ```
 ///
@@ -211,9 +212,11 @@ macro_rules! mlp {
 ///
 /// ```
 /// use ocrust::randomized_mlp;
+/// use nalgebra::DVector;
 ///
 /// let mut network = randomized_mlp![50, 30, 45, 40, 26];
-/// let output = network.classify(&[0.5; 50]);
+/// let input = DVector::from_row_slice(&[0.5; 50]);
+/// let output = network.classify(&input);
 /// assert_eq!(26, output.len());
 /// ```
 ///
@@ -221,11 +224,13 @@ macro_rules! mlp {
 ///
 /// ```
 /// use ocrust::randomized_mlp;
+/// use nalgebra::DVector;
 ///
 /// let input_size = 15;
 /// let output_size = 10;
 /// let mut network = randomized_mlp![input_size; output_size];
-/// let output = network.classify(&[0.5; 15]);
+/// let input = DVector::from_row_slice(&[0.5; 15]);
+/// let output = network.classify(&input);
 /// assert_eq!(output_size, output.len());
 /// ```
 ///
@@ -243,7 +248,7 @@ macro_rules! randomized_mlp {
     };
 }
 
-fn sigmoid(x: &f64) -> f64 {
+fn sigmoid(x: f64) -> f64 {
     let e = std::f64::consts::E;
     1.0_f64 / (1_f64 + e.powf(-x))
 }
@@ -254,20 +259,17 @@ mod tests {
     use itertools::izip;
 
     fn valid_with_topology(network: &MLP, topology: &[usize]) {
-        // check number and shape of layers (should be one hidden and one output)
+        // check number of layers (should be one hidden and one output)
         assert_eq!(network.biases.len(), topology.len() - 1);
         assert_eq!(network.weights.len(), topology.len() - 1);
-        for layer in &network.weights {
-            assert_eq!(layer.ndim(), 2);
-        }
 
         // check each layer's correctness and compatibility with the previous one
         let mut input_size = topology[0];
         let layer_cases = izip!(&network.weights, &network.biases, topology.iter().skip(1));
         for (weights, biases, wanted_size) in layer_cases {
-            assert_eq!(weights.dim().0, input_size);
-            assert_eq!(weights.dim().1, *wanted_size);
-            assert_eq!(biases.dim(), *wanted_size);
+            assert_eq!(weights.ncols(), input_size);
+            assert_eq!(weights.nrows(), *wanted_size);
+            assert_eq!(biases.nrows(), *wanted_size);
             input_size = *wanted_size;
         }
     }
@@ -337,7 +339,7 @@ mod tests {
         let output_size = 5;
 
         let network = mlp![input_size; output_size];
-        let output = network.classify(&vec![0.; input_size]);
+        let output = network.classify(&DVector::zeros(input_size));
 
         assert_eq!(output.len(), output_size);
     }
@@ -346,13 +348,13 @@ mod tests {
     #[should_panic]
     fn classify_input_too_short() {
         let network = mlp![10; 5];
-        network.classify(&[0.; 4]);
+        network.classify(&DVector::zeros(4));
     }
 
     #[test]
     #[should_panic]
     fn classify_input_too_long() {
         let network = mlp![10; 5];
-        network.classify(&[0.; 6]);
+        network.classify(&DVector::zeros(6));
     }
 }

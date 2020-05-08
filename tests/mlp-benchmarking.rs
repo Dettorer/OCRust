@@ -3,6 +3,7 @@
 extern crate ocrust;
 extern crate test;
 
+use nalgebra::DVector;
 use ocrust::mlp;
 use test::Bencher;
 
@@ -15,7 +16,8 @@ fn bench_classify_mlp(bencher: &mut Bencher) {
 #[bench]
 fn bench_classify_mmlp(bencher: &mut Bencher) {
     let network = ocrust::mlp![20, 15, 15, 10];
-    bencher.iter(|| network.classify(&[10.; 20]));
+    let input = DVector::repeat(20, 10.);
+    bencher.iter(|| network.classify(&input));
 }
 
 #[bench]
