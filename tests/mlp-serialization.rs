@@ -17,7 +17,7 @@ fn mlp_serialization() {
     );
 
     // Prepare the network to be saved
-    let network = mlp::MLP::new(10, 15);
+    let network = mlp![10; 15];
 
     // Save to file
     network.save_to_file(&tmp_path).unwrap();
