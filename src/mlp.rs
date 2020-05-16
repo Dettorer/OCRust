@@ -11,7 +11,17 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 
-/// The main structure representing an MLP.
+mod learning;
+
+/// The data format used as input for the networks
+pub type Input = DVector<f64>;
+
+/// The data format used as output by the networks
+///
+/// Each cell of the vector corresponds to a data class, the value of the cell is the probability
+/// that the input belongs to that class.
+pub type Output = DVector<f64>;
+
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct MLP {
     weights: Vec<DMatrix<f64>>,
@@ -118,14 +128,13 @@ impl MLP {
     ///
     /// # Examples
     /// ```
-    /// use ocrust::mlp::MLP;
-    /// use nalgebra::DVector;
+    /// use ocrust::mlp;
     ///
-    /// let mut network = ocrust::mlp![10; 5];
-    /// let input = DVector::from_row_slice(&[0.; 10]);
-    /// let output: DVector<f64> = network.classify(&input);
+    /// let mut network = mlp![10; 5];
+    /// let input = mlp::Input::from_row_slice(&[0.; 10]);
+    /// let output = network.classify(&input);
     /// ```
-    pub fn classify(&self, input: &DVector<f64>) -> DVector<f64> {
+    pub fn classify(&self, input: &Input) -> Output {
         let mut prev = input.clone_owned();
         for (weights, biases) in self.weights.iter().zip(&self.biases) {
             prev = (weights * prev + biases).map(sigmoid)
@@ -168,10 +177,9 @@ impl MLP {
 ///
 /// ```
 /// use ocrust::mlp;
-/// use nalgebra::DVector;
 ///
 /// let mut network = mlp![50, 30, 45, 40, 26];
-/// let input = DVector::from_row_slice(&[0.5; 50]);
+/// let input = mlp::Input::from_row_slice(&[0.5; 50]);
 /// let output = network.classify(&input);
 /// assert_eq!(26, output.len());
 /// ```
@@ -180,12 +188,11 @@ impl MLP {
 ///
 /// ```
 /// use ocrust::mlp;
-/// use nalgebra::DVector;
 ///
 /// let input_size = 15;
 /// let output_size = 10;
 /// let mut network = mlp![input_size; output_size];
-/// let input = DVector::from_row_slice(&[0.5; 15]);
+/// let input = mlp::Input::from_row_slice(&[0.5; 15]);
 /// let output = network.classify(&input);
 /// assert_eq!(output_size, output.len());
 /// ```
@@ -211,11 +218,10 @@ macro_rules! mlp {
 /// - Create an [`MLP`] with a detailed topology:
 ///
 /// ```
-/// use ocrust::randomized_mlp;
-/// use nalgebra::DVector;
+/// use ocrust::{mlp, randomized_mlp};
 ///
 /// let mut network = randomized_mlp![50, 30, 45, 40, 26];
-/// let input = DVector::from_row_slice(&[0.5; 50]);
+/// let input = mlp::Input::from_row_slice(&[0.5; 50]);
 /// let output = network.classify(&input);
 /// assert_eq!(26, output.len());
 /// ```
@@ -223,13 +229,12 @@ macro_rules! mlp {
 /// - Create a [`MLP`] with an input and output size:
 ///
 /// ```
-/// use ocrust::randomized_mlp;
-/// use nalgebra::DVector;
+/// use ocrust::{mlp, randomized_mlp};
 ///
 /// let input_size = 15;
 /// let output_size = 10;
 /// let mut network = randomized_mlp![input_size; output_size];
-/// let input = DVector::from_row_slice(&[0.5; 15]);
+/// let input = mlp::Input::from_row_slice(&[0.5; 15]);
 /// let output = network.classify(&input);
 /// assert_eq!(output_size, output.len());
 /// ```
@@ -339,7 +344,7 @@ mod tests {
         let output_size = 5;
 
         let network = mlp![input_size; output_size];
-        let output = network.classify(&DVector::zeros(input_size));
+        let output = network.classify(&Input::zeros(input_size));
 
         assert_eq!(output.len(), output_size);
     }
@@ -348,13 +353,13 @@ mod tests {
     #[should_panic]
     fn classify_input_too_short() {
         let network = mlp![10; 5];
-        network.classify(&DVector::zeros(4));
+        network.classify(&Input::zeros(4));
     }
 
     #[test]
     #[should_panic]
     fn classify_input_too_long() {
         let network = mlp![10; 5];
-        network.classify(&DVector::zeros(6));
+        network.classify(&Input::zeros(6));
     }
 }
