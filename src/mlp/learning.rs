@@ -1,32 +1,49 @@
 use super::{Input, MLP};
+use nalgebra::DVector;
 
 impl MLP {
     /// Computes the cost of the network for one input
-    fn cost_single_case(&self, input: &Input, expected_class: usize) -> f64 {
+    ///
+    /// Outputs a tuple containing:
+    /// - the total cost of the network for the input
+    /// - a `DVector` of the costs of each neuron for that input
+    fn cost_single_case(&self, input: &Input, expected_class: usize) -> (f64, DVector<f64>) {
         let output = self.classify(input);
         assert!(expected_class < output.len());
 
-        output
-            .iter()
-            .enumerate()
-            .map(|(class, activation)| {
-                let expected = if class == expected_class { 1. } else { 0. };
-                (activation - expected).powf(2.)
-            })
-            .sum()
+        let costs = DVector::from_row_slice(
+            &output
+                .iter()
+                .enumerate()
+                .map(|(class, activation)| {
+                    let expected = if class == expected_class { 1. } else { 0. };
+                    (activation - expected).powf(2.)
+                })
+                .collect::<Vec<f64>>(),
+        );
+
+        (costs.sum(), costs)
     }
 
     /// Computes the average cost of the network for the dataset
-    fn cost_dataset(&self, dataset: &[Input], expected: &[usize]) -> f64 {
+    ///
+    /// Outputs a tuple containing:
+    /// - the total cost of the network for the input
+    /// - a `DVector` of the costs of each neuron for that input
+    fn cost_dataset(&self, dataset: &[Input], expected: &[usize]) -> (f64, DVector<f64>) {
         assert!(dataset.len() != 0);
         assert_eq!(dataset.len(), expected.len());
 
-        dataset
+        let costs: DVector<f64> = dataset
             .iter()
             .zip(expected.iter())
-            .map(|(input, expected_class)| self.cost_single_case(input, *expected_class))
-            .sum::<f64>()
-            / (dataset.len() as f64)
+            .map(|(input, expected_class)| self.cost_single_case(input, *expected_class).1)
+            .sum();
+
+        (
+            costs.sum() / (dataset.len() as f64),
+            costs / (dataset.len() as f64),
+        )
     }
 }
 
@@ -89,7 +106,7 @@ mod tests {
         let dataset = [[0., 0.], [0., 1.], [1., 0.], [1., 1.]];
         let expected_set: [usize; 4] = [0, 1, 1, 0];
         for (input, expected) in dataset.iter().zip(expected_set.iter()) {
-            let cost = network.cost_single_case(&Input::from_row_slice(input), *expected);
+            let (cost, _) = network.cost_single_case(&Input::from_row_slice(input), *expected);
             assert!(cost < 0.1, "cost is {}, should be close to 0", cost);
         }
     }
@@ -102,7 +119,7 @@ mod tests {
         let dataset = [[0., 0.], [0., 1.], [1., 0.], [1., 1.]];
         let expected_set: [usize; 4] = [0, 1, 1, 0];
         for (input, expected) in dataset.iter().zip(expected_set.iter()) {
-            let cost = network.cost_single_case(&Input::from_row_slice(input), *expected);
+            let (cost, _) = network.cost_single_case(&Input::from_row_slice(input), *expected);
             assert!(cost > 1., "cost is {}, should be greater than 1", cost);
         }
     }
@@ -151,7 +168,7 @@ mod tests {
             Input::from_row_slice(&[1., 1.]),
         ];
         let network = get_good_xor_network();
-        let cost = network.cost_dataset(&dataset, &[0, 1, 1, 0]);
+        let (cost, _) = network.cost_dataset(&dataset, &[0, 1, 1, 0]);
         assert!(cost < 0.1, "cost is {}, should be close to 0", cost)
     }
 
@@ -164,7 +181,7 @@ mod tests {
             Input::from_row_slice(&[1., 1.]),
         ];
         let network = get_bad_xor_network();
-        let cost = network.cost_dataset(&dataset, &[0, 1, 1, 0]);
+        let (cost, _) = network.cost_dataset(&dataset, &[0, 1, 1, 0]);
         assert!(cost > 1., "cost is {}, should be greater than 1", cost)
     }
 }
