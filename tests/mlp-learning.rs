@@ -11,7 +11,8 @@ fn mlp_learn_xor_case_by_case() {
     // Train the network over the whole dataset 100 times
     for _ in 0..100 {
         for ((a, b), expected) in TRAINING_DATA.iter() {
-            network.train_case(mlp::Input::from_row_slice(&[*a, *b]), *expected);
+            let input = mlp::Input::from_row_slice(&[*a, *b]);
+            network.train_case(&input, *expected);
         }
     }
 

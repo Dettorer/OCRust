@@ -24,6 +24,6 @@ fn bench_learning_mlp(bencher: &mut Bencher) {
     let mut network = mlp![2;2];
     bencher.iter(|| {
         let input = DVector::from_row_slice(&[0_f64, 1_f64]);
-        network.train_case(input, 1)
+        network.train_case(&input, 1)
     });
 }

@@ -48,9 +48,9 @@ impl MLP {
     }
 
     /// Tries to classify the input and backpropagates the error once
-    pub fn train_case(&mut self, input: Input, expected_class: usize) {
+    pub fn train_case(&mut self, input: &Input, expected_class: usize) {
         // ---- Feed forward the input ----
-        let mut activations = vec![input];
+        let mut activations = vec![input.clone()];
         let mut outputs = vec![]; // each layer's z vector (output before the activation function)
         for (weights, biases) in self.weights.iter().zip(&self.biases) {
             // Compute the output of a layer
@@ -249,18 +249,18 @@ mod tests {
     fn train_case_valid() {
         // just verify that it doesn't panic
         let mut network = mlp![50; 10];
-        network.train_case(Input::zeros(50), 0);
-        network.train_case(Input::zeros(50), 5);
-        network.train_case(Input::zeros(50), 9);
+        network.train_case(&Input::zeros(50), 0);
+        network.train_case(&Input::zeros(50), 5);
+        network.train_case(&Input::zeros(50), 9);
 
         let mut network = mlp![10, 5, 6, 8, 5, 5];
-        network.train_case(Input::zeros(10), 0);
-        network.train_case(Input::zeros(10), 2);
-        network.train_case(Input::zeros(10), 4);
+        network.train_case(&Input::zeros(10), 0);
+        network.train_case(&Input::zeros(10), 2);
+        network.train_case(&Input::zeros(10), 4);
 
         let mut network = mlp![50, 10]; // no hidden layer
-        network.train_case(Input::zeros(50), 5);
-        network.train_case(Input::zeros(50), 0);
-        network.train_case(Input::zeros(50), 9);
+        network.train_case(&Input::zeros(50), 5);
+        network.train_case(&Input::zeros(50), 0);
+        network.train_case(&Input::zeros(50), 9);
     }
 }
