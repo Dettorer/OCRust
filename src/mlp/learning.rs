@@ -1,5 +1,6 @@
-use super::{Input, MLP};
-use nalgebra::DVector;
+use super::{sigmoid, sigmoid_derivative, Input, MLP};
+use itertools::izip;
+use nalgebra::{DMatrix, DVector};
 
 impl MLP {
     /// Computes the cost of the network for one input
@@ -7,7 +8,7 @@ impl MLP {
     /// Outputs a tuple containing:
     /// - the total cost of the network for the input
     /// - a `DVector` of the costs of each neuron for that input
-    fn cost_single_case(&self, input: &Input, expected_class: usize) -> (f64, DVector<f64>) {
+    pub fn cost_single_case(&self, input: &Input, expected_class: usize) -> (f64, DVector<f64>) {
         let output = self.classify(input);
         assert!(expected_class < output.len());
 
@@ -30,7 +31,7 @@ impl MLP {
     /// Outputs a tuple containing:
     /// - the total cost of the network for the input
     /// - a `DVector` of the costs of each neuron for that input
-    fn cost_dataset(&self, dataset: &[Input], expected: &[usize]) -> (f64, DVector<f64>) {
+    pub fn cost_dataset(&self, dataset: &[Input], expected: &[usize]) -> (f64, DVector<f64>) {
         assert!(dataset.len() != 0);
         assert_eq!(dataset.len(), expected.len());
 
@@ -44,6 +45,65 @@ impl MLP {
             costs.sum() / (dataset.len() as f64),
             costs / (dataset.len() as f64),
         )
+    }
+
+    /// Tries to classify the input and backpropagates the error once
+    pub fn train_case(&mut self, input: Input, expected_class: usize) {
+        // ---- Feed forward the input ----
+        let mut activations = vec![input];
+        let mut outputs = vec![]; // each layer's z vector (output before the activation function)
+        for (weights, biases) in self.weights.iter().zip(&self.biases) {
+            // Compute the output of a layer
+            outputs.push(weights * activations.last().unwrap() + biases);
+            // Activate the neurons and save their activations
+            activations.push(outputs.last().unwrap().map(sigmoid));
+        }
+        let output = activations.pop().unwrap();
+
+        // ---- Compute the output error ----
+        // adjustments to apply to weights, in reverse order of layer
+        let mut nabla_weights: Vec<DMatrix<f64>> = vec![];
+        // adjustments to apply to biases, in reverse order of layer
+        let mut nabla_biases: Vec<DVector<f64>> = vec![];
+
+        // the correct network output would be every output neuron at 0 except the one
+        // corresponding to the input's class, which would be 1
+        let mut expected = Input::zeros(output.nrows());
+        expected[expected_class] = 1.;
+
+        // compute the output layer's delta and adjustments
+        // `delta` contains numbers representing the magnitude of the impact a nudge to the
+        // corresponding neuron would have on the network's cost
+        let last_output = outputs.pop().unwrap();
+        let mut delta = (expected - output).component_mul(&last_output.map(sigmoid_derivative));
+        nabla_biases.push(delta.clone());
+        nabla_weights.push(&delta * activations.pop().unwrap().transpose());
+
+        // ---- Backpropagate the error ----
+        // We already computed the adjustments to make to the last layer.
+        // To compute the adjustments to make to some layer, we need the weights of the following
+        // one.
+        // We'll iterate over the weights that we need to compute those adjustments: from the last
+        // layer to the second one.
+        for weights in self.weights.iter().skip(1).rev() {
+            let output = outputs.pop().unwrap();
+            let sp = output.map(sigmoid_derivative);
+            delta = (weights.transpose() * delta).component_mul(&sp);
+            nabla_biases.push(delta.clone());
+            nabla_weights.push(&delta * activations.pop().unwrap().transpose());
+        }
+
+        // Apply the nablas to each layer
+        let nabla_iterator = izip!(
+            self.weights.iter_mut(),
+            self.biases.iter_mut(),
+            nabla_weights.iter().rev(),
+            nabla_biases.iter().rev()
+        );
+        for (layer_w, layer_b, layer_nw, layer_nb) in nabla_iterator {
+            *layer_w += layer_nw;
+            *layer_b += layer_nb;
+        }
     }
 }
 
@@ -183,5 +243,24 @@ mod tests {
         let network = get_bad_xor_network();
         let (cost, _) = network.cost_dataset(&dataset, &[0, 1, 1, 0]);
         assert!(cost > 1., "cost is {}, should be greater than 1", cost)
+    }
+
+    #[test]
+    fn train_case_valid() {
+        // just verify that it doesn't panic
+        let mut network = mlp![50; 10];
+        network.train_case(Input::zeros(50), 0);
+        network.train_case(Input::zeros(50), 5);
+        network.train_case(Input::zeros(50), 9);
+
+        let mut network = mlp![10, 5, 6, 8, 5, 5];
+        network.train_case(Input::zeros(10), 0);
+        network.train_case(Input::zeros(10), 2);
+        network.train_case(Input::zeros(10), 4);
+
+        let mut network = mlp![50, 10]; // no hidden layer
+        network.train_case(Input::zeros(50), 5);
+        network.train_case(Input::zeros(50), 0);
+        network.train_case(Input::zeros(50), 9);
     }
 }

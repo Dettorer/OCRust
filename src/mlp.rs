@@ -167,6 +167,16 @@ impl MLP {
 
         Ok(())
     }
+
+    /// Prints the values of each weights and biases of each layer in a human readable format
+    pub fn display_weights(&self) {
+        for (layer, (weights, biases)) in self.weights.iter().zip(self.biases.iter()).enumerate() {
+            println!(
+                "Layer number {} (weights, then biases):\n{}{}",
+                layer, weights, biases
+            );
+        }
+    }
 }
 
 /// Creates a zero-initialized [`MLP`] with the given topology.
@@ -256,6 +266,10 @@ macro_rules! randomized_mlp {
 fn sigmoid(x: f64) -> f64 {
     let e = std::f64::consts::E;
     1.0_f64 / (1_f64 + e.powf(-x))
+}
+
+fn sigmoid_derivative(x: f64) -> f64 {
+    sigmoid(x) * (1. - sigmoid(x))
 }
 
 #[cfg(test)]

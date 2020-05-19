@@ -18,3 +18,12 @@ fn bench_classify_mlp(bencher: &mut Bencher) {
 fn bench_randomize_mlp(bencher: &mut Bencher) {
     bencher.iter(|| randomized_mlp![20, 15, 15, 13, 17, 10]);
 }
+
+#[bench]
+fn bench_learning_mlp(bencher: &mut Bencher) {
+    let mut network = mlp![2;2];
+    bencher.iter(|| {
+        let input = DVector::from_row_slice(&[0_f64, 1_f64]);
+        network.train_case(input, 1)
+    });
+}
